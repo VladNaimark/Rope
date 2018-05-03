@@ -14,13 +14,12 @@ class Rope {
     private var ropeSegments = [SCNNode]()
     private var linkNodeGeometry : SCNCapsule!
     private lazy var linkNodePhysics : SCNPhysicsBody = {
-        let geometry = SCNCapsule(capRadius: linkNodeGeometry.capRadius,
-                                  height: linkNodeGeometry.height + linkNodeGeometry.capRadius*2)
         let body = SCNPhysicsBody(type: SCNPhysicsBodyType.dynamic,
-                                  shape: SCNPhysicsShape(geometry: geometry))
-//            shape: nil)
+                                  shape: SCNPhysicsShape(geometry: linkNodeGeometry,
+                                                         options: [SCNPhysicsShape.Option.scale : 0.5]))
         body.isAffectedByGravity = true
-        body.mass = 1
+        
+        body.mass = 0.1
         return body
     }()
     private var joints = [SCNPhysicsBallSocketJoint]()
@@ -60,13 +59,30 @@ class Rope {
         for segment in ropeSegments {
             parent.addChildNode(segment)
         }
+        let anchorB = SCNVector3(x: 0, y: Float(linkNodeGeometry.height/2 - linkNodeGeometry.capRadius), z: 0)
         let joint = SCNPhysicsBallSocketJoint(bodyA: parent.physicsBody!,
                                               anchorA: anchor,
-                                              bodyB: (ropeSegments.first?.physicsBody)!,
-//                                              anchorB: SCNVector3(x: 0, y: Float(-linkNodeGeometry.capRadius), z: 0))
-//            anchorB: SCNVector3(x: 0, y: Float(linkNodeGeometry.height / 2), z: 0))
-            anchorB: SCNVector3(x: 0, y: Float(linkNodeGeometry.height + linkNodeGeometry.capRadius*2)/2, z: 0))
+                                              bodyB: (startNode?.physicsBody)!,
+                                              anchorB: anchorB)
         world.addBehavior(joint)
+        ropeSegments.first?.position = SCNVector3(x: anchor.x, y: anchor.y - Float(linkNodeGeometry.height/2), z: anchor.z)
+        arrangeSegments()
+    }
+    
+    func attachToRope(node: SCNNode, anchor: SCNVector3) {
+//        endNode?.addChildNode(node)
+        guard let endNode = endNode else {
+            return;
+        }
+        let anchorA = SCNVector3(x: 0, y: 0, z: 0)
+        let joint = SCNPhysicsBallSocketJoint(bodyA: endNode.physicsBody!,
+                                              anchorA: anchorA,
+                                              bodyB: node.physicsBody!,
+                                              anchorB: anchor)
+        world.addBehavior(joint)
+        node.position = SCNVector3(x: endNode.position.x,
+                                   y: Float(endNode.position.y) - Float(linkNodeGeometry.height/2) - Float(node.boundingBox.max.y - node.boundingBox.min.y) / 2,
+                                   z: endNode.position.z)
     }
     
     private func createRope() {
@@ -79,14 +95,19 @@ class Rope {
                 newNode.physicsBody = linkNodePhysics.copy() as? SCNPhysicsBody
                 
                 if let lastBody = lastNode?.physicsBody, let newBody = newNode.physicsBody {
+                    let anchorA = SCNVector3(x: 0,
+                                             y: -Float(linkNodeGeometry.height/2 - linkNodeGeometry.capRadius),
+                                             z: 0)
+                    let anchorB = SCNVector3(x: 0,
+                                             y: Float(linkNodeGeometry.height/2 - linkNodeGeometry.capRadius),
+                                             z: 0)
                     let joint = SCNPhysicsBallSocketJoint(bodyA: lastBody,
-                                                        anchorA: SCNVector3(x: 0, y: -Float(linkNodeGeometry.height/2), z: 0),
+                                                        anchorA: anchorA,
                                                           bodyB: newBody,
-                                                          anchorB: SCNVector3(x: 0, y: Float(linkNodeGeometry.height/2), z: 0))
+                                                        anchorB: anchorB)
                     joints.append(joint)
                     world.addBehavior(joint)
                 }
-                
                 ropeSegments.append(newNode)
             }
         } else if ropeSegments.count > segmentsCount {
@@ -97,6 +118,20 @@ class Rope {
                 }
             }
             ropeSegments.removeLast(cnt)
+        }
+    }
+    
+    private func arrangeSegments() {
+        var previous = startNode
+        for i in 1..<ropeSegments.count {
+            let segment = ropeSegments[i]
+            
+            if let previous = previous {
+                segment.position = SCNVector3(x: previous.position.x,
+                                              y: previous.position.y - Float(linkNodeGeometry.height - linkNodeGeometry.capRadius * 2),
+                                              z: previous.position.z)
+            }
+            previous = segment
         }
     }
 }

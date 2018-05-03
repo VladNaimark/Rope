@@ -13,7 +13,7 @@ import SceneKit
 class GameViewController: UIViewController {
     
     var rope : Rope!
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -56,21 +56,29 @@ class GameViewController: UIViewController {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         scnView.addGestureRecognizer(tapGesture)
         
-        rope = Rope(segmentsCount: 1, radius: 0.01, segmentLength: 0.1, world: scene.physicsWorld)
+        rope = Rope(segmentsCount: 5, radius: 0.01, segmentLength: 0.1, world: scene.physicsWorld)
         
         let box = scene.rootNode.childNode(withName: "box", recursively: false)!
         let geometry = box.geometry as! SCNBox
         rope.attachTo(parent: box, anchor: SCNVector3(x: 0,
-                                                      y: Float(-geometry.height)+0.04,
+                                                      y: Float(-geometry.height/2),
                                                       z: 0))
-
+        
+        let ball = scene.rootNode.childNode(withName: "soccerBall", recursively: false)
+//        if let ball = ball, let geometry = ball.geometry as? SCNSphere {
+//            rope.attachToRope(node: ball, anchor: SCNVector3(x: 0,
+//                                                             y: Float(geometry.radius),
+//                                                             z: 0))
+//        }
     }
     
     @objc
     func handleTap(_ gestureRecognize: UIGestureRecognizer) {
         // retrieve the SCNView
         let scnView = self.view as! SCNView
-        rope.endNode?.physicsBody?.applyForce(SCNVector3(x: 5, y: 0, z: 0), asImpulse: true)
+        let ball = scnView.scene?.rootNode.childNode(withName: "soccerBall", recursively: false)
+        ball?.physicsBody?.applyForce(SCNVector3(x: 5, y: 0, z: 0), asImpulse: true)
+//        rope.endNode?.physicsBody?.applyForce(SCNVector3(x: 5, y: 0, z: 0), asImpulse: true)
     }
     
     override var shouldAutorotate: Bool {
